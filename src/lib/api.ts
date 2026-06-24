@@ -19,11 +19,9 @@ export interface MerchantBrand {
 export interface Offering {
   id: string;
   name: string;
-  description: string | null;
   price: number | null;
   duration_mins: number;
   category: string | null;
-  image_url: string | null;
 }
 
 export interface BookingResult {

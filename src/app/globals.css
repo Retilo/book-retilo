@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -9,43 +9,40 @@
   --accent: #f59e0b;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
-  background: #09090b;
+  background: #0a0a0f;
   color: #f4f4f5;
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Glass card utility */
-.glass {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
+input, textarea {
+  display: block;
+  width: 100%;
+  background: #0f0f1a;
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  color: #f4f4f5;
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  padding: 13px 16px;
+  transition: border-color 0.18s;
+  -webkit-appearance: none;
+}
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+}
+input:focus, textarea:focus {
+  border-color: var(--primary);
+}
+textarea {
+  resize: none;
 }
 
-/* Gradient border utility — sets a subtle colored border using the brand primary */
-.gradient-border {
-  position: relative;
-  border-radius: 16px;
-}
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  padding: 1px;
-  background: linear-gradient(135deg, var(--primary), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
