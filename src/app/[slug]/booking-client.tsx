@@ -48,10 +48,10 @@ type Tk = ReturnType<typeof themeTokens>;
 
 function themeTokens(theme: "dark" | "light") {
   if (theme === "light") return {
-    pageBg:         "radial-gradient(ellipse at 20% 0%, #ede9fe 0%, #f4f4ff 60%)",
-    sidebarBg:      "#ffffff",
-    sidebarBorder:  "rgba(0,0,0,0.06)",
-    stepsBg:        "#f8f8ff",
+    pageBg:         "radial-gradient(ellipse at 20% 0%, #ddd6fe 0%, #ede9fe 50%, #f4f4ff 100%)",
+    sidebarBg:      "#f5f3ff",
+    sidebarBorder:  "rgba(109,40,217,0.10)",
+    stepsBg:        "#faf9ff",
     cardBg:         "#ffffff",
     cardBorder:     "rgba(0,0,0,0.09)",
     cardHoverBg:    "#f5f3ff",
