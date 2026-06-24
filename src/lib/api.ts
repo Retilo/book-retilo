@@ -8,6 +8,7 @@ export interface MerchantBrand {
   bannerUrl: string | null;
   primaryColor: string;
   accentColor: string;
+  bookingTheme: "dark" | "light";
   businessType: string;
   bookingPrompt: string;
   confirmationMessage: string;

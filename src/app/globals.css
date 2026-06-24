@@ -38,7 +38,7 @@ input::placeholder, textarea::placeholder {
   color: rgba(255, 255, 255, 0.22);
 }
 input:focus, textarea:focus {
-  border-color: var(--primary);
+  border-color: var(--primary) !important;
 }
 textarea {
   resize: none;
