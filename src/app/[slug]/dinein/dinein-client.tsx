@@ -93,7 +93,7 @@ export function DineinClient({
           method: "POST",
           // ngrok-skip header: free-tier tunnels interpose a browser warning page;
           // this keeps API calls clean when demoing through ngrok
-          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId: sessionId.current, ...body }),
         });
         const json = await res.json();
