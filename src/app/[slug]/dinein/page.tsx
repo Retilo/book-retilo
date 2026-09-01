@@ -23,6 +23,27 @@ interface DineinConfig {
   address: string | null;
   stubMode: boolean;
   llm: string;
+  zones?: ZoneInfo[];
+  brand?: BrandInfo | null;
+}
+
+interface ZoneInfo {
+  id: number;
+  name: string;
+  description: string | null;
+  capacity: number | null;
+  photos: { id: number; url: string; caption: string | null }[];
+}
+
+interface BrandInfo {
+  tagline: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  primaryColor: string;
+  accentColor: string;
+  bookingTheme: string;
+  showPoweredBy: boolean;
+  whatsappNumber: string | null;
 }
 
 async function getConfig(slug: string): Promise<DineinConfig> {
@@ -37,7 +58,7 @@ async function getConfig(slug: string): Promise<DineinConfig> {
   } catch {
     /* fall through to placeholder so the page still renders */
   }
-  return { slug, displayName: "Book a table", address: null, stubMode: true, llm: "" };
+  return { slug, displayName: "Book a table", address: null, stubMode: true, llm: "", zones: [], brand: null };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
