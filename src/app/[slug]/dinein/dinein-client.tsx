@@ -488,7 +488,9 @@ export function DineinClient({
                           {formatInline(m.text.replace(/\n*Powered by Swiggy\s*$/i, ""))}
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-zinc-800 flex items-center gap-1.5 text-xs text-zinc-400">
-                          Powered by <span className="text-orange-400 font-semibold">Swiggy</span>
+                          Powered by{" "}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/brands/swiggy.webp" alt="Swiggy" className="h-4 w-auto" />
                         </div>
                       </div>
                     ) : (
@@ -578,7 +580,9 @@ export function DineinClient({
 
       <footer className="pb-6 text-xs text-zinc-600 flex items-center gap-1.5">
         {showPoweredBy && <>Reservations by Retilo · </>}
-        Powered by <span className="text-orange-400 font-medium">Swiggy</span>
+        Powered by{" "}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brands/swiggy.webp" alt="Swiggy" className="h-4 w-auto opacity-90" />
       </footer>
     </div>
   );
