@@ -183,6 +183,8 @@ export function DineinClient({
   const [busy, setBusy] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [slotOptions, setSlotOptions] = useState<SlotOption[]>([]);
+  const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
   const sessionId = useRef(`web-${Math.random().toString(36).slice(2, 10)}`);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -237,11 +239,15 @@ export function DineinClient({
 
   const decide = useCallback(
     (decision: "yes" | "no") => {
-      setMessages((m) => [...m, { kind: "user", text: decision === "yes" ? "Yes, book it ✅" : "No" }]);
+      setMessages((m) => [...m, { kind: "user", text: decision === "yes" ? "Yes, book it ✅" : "No, change it" }]);
       setNeedsConfirmation(false);
-      void post({ decision }, "confirm");
+      void post({
+        decision,
+        customerName:  custName.trim()  || null,
+        customerPhone: custPhone.trim() || null,
+      }, "confirm");
     },
-    [post]
+    [post, custName, custPhone]
   );
 
   const canSubmit = guests !== null && dateIdx !== null && time !== null;
@@ -514,21 +520,42 @@ export function DineinClient({
                 </div>
               )}
 
-              {/* confirmation chips */}
+              {/* confirmation + customer details */}
               {needsConfirmation && !busy && (
-                <div className="self-start flex gap-2">
-                  <button
-                    onClick={() => decide("yes")}
-                    className="rounded-full bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 px-4 py-1.5 text-sm hover:bg-emerald-500/25"
-                  >
-                    ✅ Yes, book it
-                  </button>
-                  <button
-                    onClick={() => decide("no")}
-                    className="rounded-full border border-zinc-700 text-zinc-300 px-4 py-1.5 text-sm hover:bg-zinc-800"
-                  >
-                    ❌ No
-                  </button>
+                <div className="self-start w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#1d2026] p-4 flex flex-col gap-3">
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-zinc-500">
+                    Your details (for the reminder)
+                  </p>
+                  <input
+                    value={custName}
+                    onChange={(e) => setCustName(e.target.value)}
+                    placeholder="Your name"
+                    autoComplete="name"
+                    className="w-full rounded-xl bg-[#0e0f12] border border-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:[border-color:var(--primary)]"
+                  />
+                  <input
+                    value={custPhone}
+                    onChange={(e) => setCustPhone(e.target.value)}
+                    placeholder="Phone number"
+                    type="tel"
+                    autoComplete="tel"
+                    className="w-full rounded-xl bg-[#0e0f12] border border-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:[border-color:var(--primary)]"
+                  />
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => decide("yes")}
+                      disabled={custName.trim().length < 2}
+                      className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-40 [background:var(--primary)] hover:brightness-110 disabled:cursor-default"
+                    >
+                      ✅ Confirm booking
+                    </button>
+                    <button
+                      onClick={() => decide("no")}
+                      className="rounded-xl border border-zinc-700 text-zinc-400 px-4 py-2.5 text-sm hover:bg-zinc-800"
+                    >
+                      Change
+                    </button>
+                  </div>
                 </div>
               )}
 
