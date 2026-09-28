@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { DemoSetupClient } from "./demo-setup-client";
 
 export const metadata: Metadata = {
@@ -11,5 +12,9 @@ const API_BROWSER = process.env.LOCAL_API_PROXY
   : process.env.NEXT_PUBLIC_API_URL || "https://api.retilo.io";
 
 export default function DemoPage() {
-  return <DemoSetupClient apiBase={API_BROWSER} />;
+  return (
+    <Suspense>
+      <DemoSetupClient apiBase={API_BROWSER} />
+    </Suspense>
+  );
 }
