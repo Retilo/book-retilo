@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
@@ -169,6 +170,48 @@ export function DineinClient({
   const zones = config.zones ?? [];
   const showPoweredBy = brand ? brand.showPoweredBy : true;
   const days = useMemo(() => nextDays(7), []);
+  const searchParams = useSearchParams();
+
+  // ── Customer Swiggy session ────────────────────────────────────────────────
+  const SESSION_KEY = `swiggy_csid_${slug}`;
+  const [csid, setCsid] = useState<string | null>(null);
+  const [connectingSwiggy, setConnectingSwiggy] = useState(false);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("csid");
+    const fromStorage = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(SESSION_KEY) : null;
+    const resolved = fromUrl || fromStorage || null;
+    if (resolved) {
+      setCsid(resolved);
+      if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SESSION_KEY, resolved);
+      // strip csid from URL cleanly
+      if (fromUrl) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("csid");
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+  }, [searchParams, SESSION_KEY]);
+
+  async function connectSwiggy() {
+    setConnectingSwiggy(true);
+    try {
+      let lat: number | null = null, lng: number | null = null;
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000, maximumAge: 60000 })
+        );
+        lat = pos.coords.latitude; lng = pos.coords.longitude;
+      } catch { /* location denied — proceed without */ }
+
+      const url = `${apiBase}/v1/public/dinein/swiggy-connect?slug=${encodeURIComponent(slug)}`
+        + (lat != null ? `&lat=${lat}&lng=${lng}` : "");
+      const data = await fetch(url).then(r => r.json());
+      if (data.authorizeUrl) window.location.href = data.authorizeUrl;
+    } catch {
+      setConnectingSwiggy(false);
+    }
+  }
 
   // ── composer state (tap-only) ──────────────────────────────────────────────
   const [guests, setGuests] = useState<number | null>(2);
@@ -213,7 +256,7 @@ export function DineinClient({
         const res = await fetch(`${apiBase}/v1/public/dinein/${slug}/${path}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: sessionId.current, ...body }),
+          body: JSON.stringify({ sessionId: sessionId.current, ...(csid ? { csid } : {}), ...body }),
         });
         const json = await res.json();
         if (json?.data) handleResult(json.data as AgentResult);
@@ -224,7 +267,7 @@ export function DineinClient({
         setBusy(false);
       }
     },
-    [apiBase, slug, handleResult]
+    [apiBase, slug, csid, handleResult]
   );
 
   const send = useCallback(
@@ -275,6 +318,43 @@ export function DineinClient({
       .filter(Boolean)
       .join(" · ");
   }, [guests, dateIdx, time, zoneId, days, zones]);
+
+  // Show Swiggy connect gate until customer authenticates
+  if (!csid) {
+    return (
+      <div
+        className="min-h-screen bg-[#0e0f12] text-zinc-100 flex flex-col items-center justify-center px-6 gap-5"
+        style={{ "--primary": brand?.primaryColor || "#f97316" } as React.CSSProperties}
+      >
+        {brand?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={brand.logoUrl} alt={config.displayName} className="h-16 w-16 rounded-2xl object-cover border border-white/15 shadow-xl" />
+        ) : (
+          <div className="h-14 w-14 rounded-2xl flex items-center justify-center text-3xl [background:color-mix(in_srgb,var(--primary)_15%,transparent)]">
+            🍽
+          </div>
+        )}
+        <div className="text-center">
+          <h1 className="text-xl font-bold">{config.displayName}</h1>
+          <p className="mt-1 text-sm text-zinc-400">Reserve a table instantly</p>
+        </div>
+        <div className="max-w-xs text-center text-sm text-zinc-500 leading-relaxed">
+          Connect your Swiggy account to check real-time availability and confirm your reservation in seconds.
+        </div>
+        <button
+          onClick={connectSwiggy}
+          disabled={connectingSwiggy}
+          className="flex items-center gap-3 rounded-2xl px-7 py-3.5 text-base font-bold text-white transition hover:brightness-110 disabled:opacity-60 w-full max-w-xs justify-center"
+          style={{ background: "#fc8019" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brands/swiggy.webp" alt="" className="h-5 w-auto brightness-0 invert" />
+          {connectingSwiggy ? "Redirecting…" : "Continue with Swiggy"}
+        </button>
+        <p className="text-[11px] text-zinc-600">Your Swiggy account is used only to place this booking</p>
+      </div>
+    );
+  }
 
   return (
     <div

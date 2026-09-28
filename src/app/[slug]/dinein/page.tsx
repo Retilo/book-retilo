@@ -5,6 +5,7 @@
  * fulfils the reservation.
  */
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { DineinClient } from "./dinein-client";
 
 // Server-side fetches need an absolute URL; the browser uses NEXT_PUBLIC_API_URL,
@@ -73,5 +74,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DineinPage({ params }: Props) {
   const { slug } = await params;
   const cfg = await getConfig(slug);
-  return <DineinClient slug={slug} config={cfg} apiBase={API_BROWSER} />;
+  return (
+    <Suspense>
+      <DineinClient slug={slug} config={cfg} apiBase={API_BROWSER} />
+    </Suspense>
+  );
 }
