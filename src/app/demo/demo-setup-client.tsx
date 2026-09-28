@@ -88,7 +88,7 @@ export function DemoSetupClient({ apiBase }: Props) {
       });
       const data = await res.json();
       if (data.slug) {
-        router.push(`/demo/${data.slug}`);
+        router.push(`/demo/chat/${data.slug}`);
       } else {
         throw new Error(data.message || "Setup failed");
       }
