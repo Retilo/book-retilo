@@ -327,37 +327,60 @@ export function DineinClient({
 
   // Show Swiggy connect gate until customer authenticates
   if (!csid) {
+    const gateVibePhoto = zones.find(z => z.photos.length > 0)?.photos[0]?.url ?? brand?.bannerUrl ?? null;
     return (
       <div
-        className="min-h-screen bg-[#0e0f12] text-zinc-100 flex flex-col items-center justify-center px-6 gap-5"
+        className="min-h-screen bg-[#0e0f12] text-zinc-100 flex flex-col items-center justify-center px-6"
         style={{ "--primary": brand?.primaryColor || "#f97316" } as React.CSSProperties}
       >
-        {brand?.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={brand.logoUrl} alt={config.displayName} className="h-16 w-16 rounded-2xl object-cover border border-white/15 shadow-xl" />
-        ) : (
-          <div className="h-14 w-14 rounded-2xl flex items-center justify-center text-3xl [background:color-mix(in_srgb,var(--primary)_15%,transparent)]">
-            🍽
+        {/* ambient bg photo — subtle behind blur */}
+        {gateVibePhoto && (
+          <div className="absolute inset-0 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={gateVibePhoto} alt="" className="w-full h-full object-cover scale-110 blur-2xl opacity-20" />
+            <div className="absolute inset-0 bg-[#0e0f12]/70" />
           </div>
         )}
-        <div className="text-center">
-          <h1 className="text-xl font-bold">{config.displayName}</h1>
-          <p className="mt-1 text-sm text-zinc-400">Reserve a table instantly</p>
+
+        <div className="relative z-10 flex flex-col items-center gap-5 w-full max-w-xs">
+          {/* logo on white card — same treatment Swiggy uses */}
+          <div className="rounded-[20px] bg-white p-3 shadow-2xl">
+            {brand?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={brand.logoUrl}
+                alt={config.displayName}
+                className="h-20 w-20 rounded-xl object-contain"
+              />
+            ) : (
+              <div className="h-20 w-20 rounded-xl flex items-center justify-center text-4xl bg-zinc-100">
+                🍽
+              </div>
+            )}
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight">{config.displayName}</h1>
+            <p className="mt-1 text-sm text-zinc-400">Reserve a table instantly</p>
+          </div>
+
+          <p className="text-center text-sm text-zinc-500 leading-relaxed">
+            Connect your Swiggy account to check real-time availability and confirm your reservation in seconds.
+          </p>
+
+          <button
+            onClick={connectSwiggy}
+            disabled={connectingSwiggy}
+            className="flex items-center gap-3 rounded-2xl px-7 py-4 text-base font-bold text-white transition hover:brightness-110 disabled:opacity-60 w-full justify-center shadow-lg"
+            style={{ background: "#fc8019" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brands/swiggy.webp" alt="" className="h-5 w-auto brightness-0 invert" />
+            {connectingSwiggy ? "Redirecting…" : "Continue with Swiggy"}
+          </button>
+
+          <p className="text-[11px] text-zinc-600">Your Swiggy account is used only to place this booking</p>
         </div>
-        <div className="max-w-xs text-center text-sm text-zinc-500 leading-relaxed">
-          Connect your Swiggy account to check real-time availability and confirm your reservation in seconds.
-        </div>
-        <button
-          onClick={connectSwiggy}
-          disabled={connectingSwiggy}
-          className="flex items-center gap-3 rounded-2xl px-7 py-3.5 text-base font-bold text-white transition hover:brightness-110 disabled:opacity-60 w-full max-w-xs justify-center"
-          style={{ background: "#fc8019" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brands/swiggy.webp" alt="" className="h-5 w-auto brightness-0 invert" />
-          {connectingSwiggy ? "Redirecting…" : "Continue with Swiggy"}
-        </button>
-        <p className="text-[11px] text-zinc-600">Your Swiggy account is used only to place this booking</p>
       </div>
     );
   }
