@@ -22,6 +22,10 @@ interface SlotOption {
 interface AgentResult {
   reply: string;
   needsConfirmation?: boolean;
+  needsPayment?: boolean;
+  amount?: number | null;
+  dealTitle?: string | null;
+  cartId?: string | null;
   slotOptions?: SlotOption[];
   completed?: boolean;
   orderId?: string;
@@ -125,6 +129,10 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
   const [busy, setBusy]                       = useState(false);
   const [slotOptions, setSlotOptions]         = useState<SlotOption[]>([]);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [needsPayment, setNeedsPayment]       = useState(false);
+  const [paymentAmount, setPaymentAmount]     = useState<number | null>(null);
+  const [paymentDealTitle, setPaymentDealTitle] = useState<string | null>(null);
+  const [payBusy, setPayBusy]                 = useState(false);
   const [custName, setCustName]               = useState("");
   const [custPhone, setCustPhone]             = useState("");
   const sessionId = useRef(`demo-${Math.random().toString(36).slice(2, 10)}`);
@@ -136,9 +144,18 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
 
   const handleResult = useCallback((r: AgentResult) => {
     setNeedsConfirmation(!!r.needsConfirmation);
+    if (r.needsPayment) {
+      setNeedsPayment(true);
+      setPaymentAmount(r.amount ?? null);
+      setPaymentDealTitle(r.dealTitle ?? null);
+    } else {
+      setNeedsPayment(false);
+      setPaymentAmount(null);
+      setPaymentDealTitle(null);
+    }
     const all = r.slotOptions ?? [];
     const mentioned = all.filter((o) => r.reply.includes(o.displayTime));
-    setSlotOptions(!r.needsConfirmation && !r.completed ? (mentioned.length ? mentioned : all) : []);
+    setSlotOptions(!r.needsConfirmation && !r.needsPayment && !r.completed ? (mentioned.length ? mentioned : all) : []);
     if (r.completed) {
       setMessages((m) => [...m, { kind: "card", text: r.reply }]);
     } else {
@@ -173,10 +190,33 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
       if (!text.trim() || busy) return;
       setMessages((m) => [...m, { kind: "user", text }]);
       setSlotOptions([]);
+      setNeedsPayment(false);
+      setPaymentAmount(null);
+      setPaymentDealTitle(null);
       void post({ message: text }, "chat");
     },
     [busy, post]
   );
+
+  const completePay = useCallback(async () => {
+    if (!config || payBusy) return;
+    setPayBusy(true);
+    setNeedsPayment(false);
+    try {
+      const res = await fetch(`${apiBase}/v1/public/demo/${id}/complete-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionId.current }),
+      });
+      const json = await res.json();
+      if (json?.data) handleResult(json.data as AgentResult);
+      else setMessages((m) => [...m, { kind: "bot", text: "Payment confirmation failed — please try again." }]);
+    } catch {
+      setMessages((m) => [...m, { kind: "bot", text: "Network hiccup — please try again." }]);
+    } finally {
+      setPayBusy(false);
+    }
+  }, [apiBase, id, config, handleResult, payBusy]);
 
   const decide = useCallback(
     (decision: "yes" | "no") => {
@@ -371,8 +411,37 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
                 </div>
               )}
 
+              {/* payment card */}
+              {needsPayment && !busy && !payBusy && (
+                <div className="self-start w-full max-w-sm rounded-2xl border border-orange-500/40 bg-[#1a1208] p-4 flex flex-col gap-3">
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-orange-500/80">
+                    Booking fee required
+                  </p>
+                  {paymentDealTitle && (
+                    <p className="text-sm text-zinc-200">{paymentDealTitle}</p>
+                  )}
+                  {paymentAmount != null && (
+                    <p className="text-2xl font-bold text-white">₹{paymentAmount}</p>
+                  )}
+                  <button
+                    onClick={completePay}
+                    className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+                  >
+                    Pay via UPI &amp; Confirm table
+                  </button>
+                  <p className="text-[10px] text-zinc-600 text-center">Staging demo environment</p>
+                </div>
+              )}
+
+              {payBusy && !busy && (
+                <div className="self-start flex items-center gap-2 text-xs text-zinc-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                  Processing payment…
+                </div>
+              )}
+
               {/* slot chips */}
-              {!needsConfirmation && slotOptions.length > 0 && !busy && (
+              {!needsConfirmation && !needsPayment && slotOptions.length > 0 && !busy && (
                 <div className="self-start flex flex-wrap gap-2 pt-1">
                   {slotOptions.slice(0, 6).map((o) => (
                     <button
