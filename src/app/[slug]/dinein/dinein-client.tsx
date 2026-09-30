@@ -68,6 +68,7 @@ interface SlotOption {
   displayTime: string;
   slotGroupName: string;
   dealTitle: string;
+  isFree?: boolean;
 }
 
 interface AgentResult {
@@ -649,6 +650,9 @@ export function DineinClient({
                       className="rounded-full border px-3 py-1.5 text-xs transition-colors [border-color:color-mix(in_srgb,var(--primary)_60%,transparent)] [color:color-mix(in_srgb,var(--primary)_75%,white)] hover:[background:color-mix(in_srgb,var(--primary)_12%,transparent)]"
                     >
                       {o.displayTime} · {o.dateStr.slice(5)}
+                      {o.isFree === false && (
+                        <span className="ml-1.5 opacity-60">· paid</span>
+                      )}
                     </button>
                   ))}
                 </div>
