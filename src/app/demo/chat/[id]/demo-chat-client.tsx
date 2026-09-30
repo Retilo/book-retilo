@@ -12,11 +12,19 @@ interface DemoConfig {
 
 interface SlotOption {
   slotId: number;
+  itemId?: string;
   dateStr: string;
   displayTime: string;
   slotGroupName: string;
   dealTitle: string;
   isFree?: boolean;
+  bookingPrice?: number | null;
+}
+
+interface PaymentOption {
+  intentApp: string;
+  name: string;
+  icon?: string;
 }
 
 interface AgentResult {
@@ -25,7 +33,8 @@ interface AgentResult {
   needsPayment?: boolean;
   amount?: number | null;
   dealTitle?: string | null;
-  cartId?: string | null;
+  cartKey?: string | null;
+  paymentOptions?: PaymentOption[];
   slotOptions?: SlotOption[];
   completed?: boolean;
   orderId?: string;
@@ -129,10 +138,11 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
   const [busy, setBusy]                       = useState(false);
   const [slotOptions, setSlotOptions]         = useState<SlotOption[]>([]);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [needsPayment, setNeedsPayment]       = useState(false);
-  const [paymentAmount, setPaymentAmount]     = useState<number | null>(null);
+  const [needsPayment, setNeedsPayment]         = useState(false);
+  const [paymentAmount, setPaymentAmount]       = useState<number | null>(null);
   const [paymentDealTitle, setPaymentDealTitle] = useState<string | null>(null);
-  const [payBusy, setPayBusy]                 = useState(false);
+  const [paymentOptions, setPaymentOptions]     = useState<PaymentOption[]>([]);
+  const [payBusy, setPayBusy]                   = useState(false);
   const [custName, setCustName]               = useState("");
   const [custPhone, setCustPhone]             = useState("");
   const sessionId = useRef(`demo-${Math.random().toString(36).slice(2, 10)}`);
@@ -148,10 +158,12 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
       setNeedsPayment(true);
       setPaymentAmount(r.amount ?? null);
       setPaymentDealTitle(r.dealTitle ?? null);
+      setPaymentOptions(r.paymentOptions ?? []);
     } else {
       setNeedsPayment(false);
       setPaymentAmount(null);
       setPaymentDealTitle(null);
+      setPaymentOptions([]);
     }
     const all = r.slotOptions ?? [];
     const mentioned = all.filter((o) => r.reply.includes(o.displayTime));
@@ -198,15 +210,16 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
     [busy, post]
   );
 
-  const completePay = useCallback(async () => {
+  const completePay = useCallback(async (intentApp = "gpay") => {
     if (!config || payBusy) return;
     setPayBusy(true);
     setNeedsPayment(false);
+    setPaymentOptions([]);
     try {
       const res = await fetch(`${apiBase}/v1/public/demo/${id}/complete-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: sessionId.current }),
+        body: JSON.stringify({ sessionId: sessionId.current, intentApp }),
       });
       const json = await res.json();
       if (json?.data) handleResult(json.data as AgentResult);
@@ -414,21 +427,36 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
               {/* payment card */}
               {needsPayment && !busy && !payBusy && (
                 <div className="self-start w-full max-w-sm rounded-2xl border border-orange-500/40 bg-[#1a1208] p-4 flex flex-col gap-3">
-                  <p className="text-[11px] font-medium uppercase tracking-widest text-orange-500/80">
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-orange-500/70">
                     Booking fee required
                   </p>
                   {paymentDealTitle && (
-                    <p className="text-sm text-zinc-200">{paymentDealTitle}</p>
+                    <p className="text-sm font-medium text-zinc-100">{paymentDealTitle}</p>
                   )}
                   {paymentAmount != null && (
-                    <p className="text-2xl font-bold text-white">₹{paymentAmount}</p>
+                    <p className="text-3xl font-bold text-white">₹{paymentAmount}</p>
                   )}
-                  <button
-                    onClick={completePay}
-                    className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
-                  >
-                    Pay via UPI &amp; Confirm table
-                  </button>
+                  {paymentOptions.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {paymentOptions.map((opt) => (
+                        <button
+                          key={opt.intentApp}
+                          onClick={() => completePay(opt.intentApp)}
+                          className="w-full rounded-xl bg-[#1e1e1e] border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-100 transition hover:bg-zinc-800 flex items-center justify-center gap-2"
+                        >
+                          {opt.icon && <img src={opt.icon} alt="" className="h-5 w-5 rounded" />}
+                          Pay with {opt.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => completePay("gpay")}
+                      className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+                    >
+                      Pay via UPI &amp; Confirm table
+                    </button>
+                  )}
                   <p className="text-[10px] text-zinc-600 text-center">Staging demo environment</p>
                 </div>
               )}
@@ -443,18 +471,21 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
               {/* slot chips */}
               {!needsConfirmation && !needsPayment && slotOptions.length > 0 && !busy && (
                 <div className="self-start flex flex-wrap gap-2 pt-1">
-                  {slotOptions.slice(0, 6).map((o) => (
-                    <button
-                      key={o.slotId}
-                      onClick={() => send(`I'll take the ${o.displayTime} slot on ${o.dateStr}. Book that one.`)}
-                      className="rounded-full border border-orange-500/50 px-3 py-1.5 text-xs text-orange-300 hover:bg-orange-500/10 transition-colors"
-                    >
-                      {o.displayTime} · {o.dateStr.slice(5)}
-                      {o.isFree === false && (
-                        <span className="ml-1.5 opacity-60">· paid</span>
-                      )}
-                    </button>
-                  ))}
+                  {slotOptions.slice(0, 6).map((o, i) => {
+                    const dealLabel = o.isFree === false
+                      ? (o.dealTitle?.match(/(\d+%)/)?.[1] ? o.dealTitle.match(/(\d+%)/)?.[1] + " off" : "paid deal")
+                      : null;
+                    return (
+                      <button
+                        key={`${o.slotId}-${o.itemId}-${i}`}
+                        onClick={() => send(`Book ${o.displayTime} on ${o.dateStr}${o.isFree === false ? ` (${o.dealTitle})` : ""}. Guest count stays the same.`)}
+                        className="rounded-full border border-orange-500/50 px-3 py-1.5 text-xs text-orange-300 hover:bg-orange-500/10 transition-colors"
+                      >
+                        {o.displayTime} · {o.dateStr.slice(5)}
+                        {dealLabel && <span className="ml-1.5 opacity-60">· {dealLabel}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
