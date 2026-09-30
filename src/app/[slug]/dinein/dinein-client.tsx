@@ -50,6 +50,7 @@ interface BrandInfo {
   bookingTheme: string;
   showPoweredBy: boolean;
   whatsappNumber: string | null;
+  quickReplies?: string[];
 }
 
 interface DineinConfig {
@@ -57,6 +58,7 @@ interface DineinConfig {
   displayName: string;
   address: string | null;
   stubMode: boolean;
+  swiggyRestaurantId?: string | null;
   llm: string;
   zones?: ZoneInfo[];
   brand?: BrandInfo | null;
@@ -370,17 +372,55 @@ export function DineinClient({
         } as React.CSSProperties
       }
     >
-      {/* banner */}
-      {brand?.bannerUrl && (
-        <div className="w-full h-40 sm:h-52 relative overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.bannerUrl} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0f12] via-[#0e0f12]/40 to-transparent" />
-        </div>
-      )}
+      {/* cinematic hero — zone photo collage if available, otherwise brand banner */}
+      {(() => {
+        const vibePhotos = zones.flatMap(z =>
+          z.photos.slice(0, 2).map(p => ({ ...p, zoneName: z.name, zoneId: z.id }))
+        );
+        if (vibePhotos.length >= 1) {
+          return (
+            <div className="w-full relative">
+              {/* full-bleed horizontal film strip */}
+              <div className="w-full h-44 sm:h-56 overflow-hidden flex">
+                {vibePhotos.slice(0, 4).map((photo, i) => (
+                  <div
+                    key={photo.id}
+                    className="relative shrink-0 overflow-hidden"
+                    style={{ width: i === 0 ? "55%" : `${45 / Math.min(vibePhotos.length - 1, 3)}%` }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt={photo.zoneName} className="h-full w-full object-cover" />
+                    {/* thin separator lines between panels */}
+                    {i > 0 && <div className="absolute inset-y-0 left-0 w-[2px] bg-[#0e0f12]" />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+                    <span className="absolute bottom-2.5 left-3 text-[11px] font-semibold text-white/90 tracking-wide">
+                      {photo.zoneName}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* fade to page bg */}
+              <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0e0f12] to-transparent pointer-events-none" />
+            </div>
+          );
+        }
+        if (brand?.bannerUrl) {
+          return (
+            <div className="w-full h-40 sm:h-52 relative overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={brand.bannerUrl} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0e0f12] via-[#0e0f12]/40 to-transparent" />
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* header */}
-      <header className={cn("w-full max-w-2xl px-5 pb-4", brand?.bannerUrl ? "-mt-10 relative z-10" : "pt-8")}>
+      <header className={cn(
+        "w-full max-w-2xl px-5 pb-4",
+        zones.flatMap(z => z.photos).length >= 1 || brand?.bannerUrl ? "-mt-10 relative z-10" : "pt-8"
+      )}>
         <div className="flex items-center gap-3">
           {brand?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -728,6 +768,26 @@ export function DineinClient({
                 );
               })()}
             </div>
+
+            {/* Sticky merchant-configured quick replies — always visible */}
+            {(brand?.quickReplies ?? []).filter(r => r.trim()).length > 0 && !busy && (
+              <div className="flex flex-wrap gap-2 pb-1">
+                {(brand?.quickReplies ?? []).filter(r => r.trim()).map((reply, i) => (
+                  <button
+                    key={i}
+                    onClick={() => send(reply)}
+                    className="rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all active:scale-95 hover:brightness-110"
+                    style={{
+                      background: "color-mix(in_srgb,var(--primary)_10%,transparent)",
+                      borderColor: "color-mix(in_srgb,var(--primary)_35%,transparent)",
+                      color: "color-mix(in_srgb,var(--primary)_90%,white)",
+                    }}
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* free-text fallback for special requests */}
             <form
