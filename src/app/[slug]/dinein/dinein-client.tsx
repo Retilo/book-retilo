@@ -64,11 +64,14 @@ interface DineinConfig {
 
 interface SlotOption {
   slotId: number;
+  itemId?: string;
+  restaurantId?: string;
   dateStr: string;
   displayTime: string;
   slotGroupName: string;
   dealTitle: string;
   isFree?: boolean;
+  bookingPrice?: number;
 }
 
 interface AgentResult {
@@ -640,23 +643,90 @@ export function DineinClient({
                 </div>
               )}
 
-              {/* slot chips */}
-              {!needsConfirmation && slotOptions.length > 0 && !busy && (
-                <div className="self-start flex flex-wrap gap-2">
-                  {slotOptions.slice(0, 6).map((o) => (
-                    <button
-                      key={o.slotId}
-                      onClick={() => send(`I'll take the ${o.displayTime} slot on ${o.dateStr}. Book that one.`)}
-                      className="rounded-full border px-3 py-1.5 text-xs transition-colors [border-color:color-mix(in_srgb,var(--primary)_60%,transparent)] [color:color-mix(in_srgb,var(--primary)_75%,white)] hover:[background:color-mix(in_srgb,var(--primary)_12%,transparent)]"
-                    >
-                      {o.displayTime} · {o.dateStr.slice(5)}
-                      {o.isFree === false && (
-                        <span className="ml-1.5 opacity-60">· paid</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* slot options — deal cards when time is fixed, time pills when choosing */}
+              {!needsConfirmation && slotOptions.length > 0 && !busy && (() => {
+                const uniqueDates = [...new Set(slotOptions.map(o => o.dateStr))];
+                const uniqueTimes = [...new Set(slotOptions.map(o => o.displayTime))];
+                // Deal picker mode: same date (time decided) → show deal cards
+                const isDealPicker = uniqueDates.length === 1 && uniqueTimes.length <= 3;
+
+                if (isDealPicker) {
+                  // Deduplicate by dealTitle — show each deal type once
+                  const seen = new Set<string>();
+                  const deals = slotOptions.filter(o => {
+                    const key = o.dealTitle + (o.isFree ? "free" : "paid");
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  });
+                  return (
+                    <div className="self-start w-full flex flex-col gap-2.5 mt-1">
+                      {deals.map((o, i) => {
+                        const isBest = !o.isFree && i > 0;
+                        return (
+                          <button
+                            key={`${o.dealTitle}-${i}`}
+                            onClick={() => {
+                              const dealPart = o.isFree
+                                ? "the free reservation (no prebook fee)"
+                                : `the "${o.dealTitle}" deal (₹${o.bookingPrice ?? 10} prebook)`;
+                              send(`Book me ${dealPart} for ${o.displayTime} on ${o.dateStr}.`);
+                            }}
+                            className={cn(
+                              "relative w-full max-w-xs text-left rounded-2xl border px-4 py-3.5 transition-all active:scale-[0.98] hover:brightness-110",
+                              o.isFree
+                                ? "border-white/12 bg-white/[0.04]"
+                                : "bg-gradient-to-br from-[#1d2128] to-[#16181d] [border-color:color-mix(in_srgb,var(--primary)_50%,transparent)]"
+                            )}
+                          >
+                            {isBest && (
+                              <span className="absolute -top-2.5 left-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full [background:var(--primary)] text-white">
+                                Best value
+                              </span>
+                            )}
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className={cn("text-sm font-semibold", o.isFree ? "text-zinc-200" : "[color:var(--primary)]")}>
+                                  {o.dealTitle}
+                                </div>
+                                <div className="text-xs text-zinc-500 mt-0.5">
+                                  {o.isFree
+                                    ? "No booking fee · Pay at restaurant"
+                                    : `₹${o.bookingPrice ?? 10} prebook · Save on your bill`}
+                                </div>
+                              </div>
+                              <div className={cn(
+                                "shrink-0 text-xs font-bold px-3 py-1.5 rounded-xl mt-0.5",
+                                o.isFree
+                                  ? "bg-white/[0.06] text-zinc-300"
+                                  : "[background:color-mix(in_srgb,var(--primary)_18%,transparent)] [color:var(--primary)]"
+                              )}>
+                                {o.isFree ? "Free" : `₹${o.bookingPrice ?? 10}`}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                // Time picker mode: multiple dates → show time pills
+                return (
+                  <div className="self-start flex flex-wrap gap-2">
+                    {slotOptions.slice(0, 8).map((o, i) => (
+                      <button
+                        key={i}
+                        onClick={() => send(`I'll take the ${o.displayTime} slot on ${o.dateStr}. Book that one.`)}
+                        className="rounded-full border px-3 py-1.5 text-xs transition-colors [border-color:color-mix(in_srgb,var(--primary)_60%,transparent)] [color:color-mix(in_srgb,var(--primary)_75%,white)] hover:[background:color-mix(in_srgb,var(--primary)_12%,transparent)]"
+                      >
+                        {o.displayTime} · {o.dateStr.slice(5)}
+                        {o.isFree === false && <span className="ml-1.5 opacity-50">· deal</span>}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* free-text fallback for special requests */}
