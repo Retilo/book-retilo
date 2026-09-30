@@ -53,6 +53,22 @@ interface BrandInfo {
   quickReplies?: string[];
 }
 
+interface TableInfo {
+  id: number;
+  zoneId: number | null;
+  label: string;
+  capacity: number;
+  x: number;
+  y: number;
+  shape: string;
+  isAvailable: boolean;
+}
+
+interface FloorPlan {
+  floorPlanUrl: string | null;
+  tables: TableInfo[];
+}
+
 interface DineinConfig {
   slug: string;
   displayName: string;
@@ -61,6 +77,7 @@ interface DineinConfig {
   swiggyRestaurantId?: string | null;
   llm: string;
   zones?: ZoneInfo[];
+  floorPlan?: FloorPlan | null;
   brand?: BrandInfo | null;
 }
 
@@ -174,6 +191,8 @@ export function DineinClient({
 }) {
   const brand = config.brand;
   const zones = config.zones ?? [];
+  const floorPlan = config.floorPlan ?? null;
+  const availableTables = (floorPlan?.tables ?? []).filter((t) => t.isAvailable);
   const showPoweredBy = brand ? brand.showPoweredBy : true;
   const days = useMemo(() => nextDays(7), []);
   const searchParams = useSearchParams();
@@ -224,6 +243,7 @@ export function DineinClient({
   const [dateIdx, setDateIdx] = useState<number | null>(0);
   const [time, setTime] = useState<string | null>(null);
   const [zoneId, setZoneId] = useState<number | null>(null);
+  const [tableId, setTableId] = useState<number | null>(null);
   const [view, setView] = useState<"compose" | "chat">("compose");
 
   // ── conversation state ─────────────────────────────────────────────────────
@@ -305,25 +325,30 @@ export function DineinClient({
     if (!canSubmit || busy) return;
     const day = days[dateIdx!];
     const zone = zones.find((z) => z.id === zoneId);
-    const msg =
-      `Table for ${guests} ${day.long} (${day.iso}) at ${time}.` +
-      (zone ? ` We'd prefer the ${zone.name} seating.` : "");
+    const table = availableTables.find((t) => t.id === tableId);
+    const locationPart = table
+      ? ` I want ${table.label} (seats ${table.capacity}).`
+      : zone
+      ? ` We'd prefer the ${zone.name} seating.`
+      : "";
+    const msg = `Table for ${guests} ${day.long} (${day.iso}) at ${time}.${locationPart}`;
     setView("chat");
     send(msg);
-  }, [canSubmit, busy, days, dateIdx, zones, zoneId, guests, time, send]);
+  }, [canSubmit, busy, days, dateIdx, zones, zoneId, tableId, availableTables, guests, time, send]);
 
   const summary = useMemo(() => {
     if (dateIdx === null) return "";
     const zone = zones.find((z) => z.id === zoneId);
+    const table = availableTables.find((t) => t.id === tableId);
     return [
       `${guests} guest${guests === 1 ? "" : "s"}`,
       days[dateIdx].chip,
       time,
-      zone?.name,
+      table?.label ?? zone?.name,
     ]
       .filter(Boolean)
       .join(" · ");
-  }, [guests, dateIdx, time, zoneId, days, zones]);
+  }, [guests, dateIdx, time, zoneId, tableId, days, zones, availableTables]);
 
   // Show Swiggy connect gate until customer authenticates
   if (!csid) {
@@ -553,8 +578,85 @@ export function DineinClient({
                     </div>
                   </div>
 
-                  {/* seating zones — photo carousel, tap to pick */}
-                  {zones.length > 0 && (
+                  {/* seat picker — floor plan (table-level) or zone cards */}
+                  {floorPlan?.floorPlanUrl && availableTables.length > 0 ? (
+                    <div>
+                      <SectionLabel icon={Armchair}>Pick your exact table</SectionLabel>
+                      <div
+                        className="relative w-full rounded-2xl overflow-hidden"
+                        style={{ aspectRatio: "16/9" }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={floorPlan.floorPlanUrl}
+                          alt="Restaurant floor plan"
+                          className="w-full h-full object-cover"
+                        />
+                        {availableTables.map((t) => {
+                          const isSelected = tableId === t.id;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => {
+                                setTableId(isSelected ? null : t.id);
+                                // also set zone if table has one
+                                if (!isSelected && t.zoneId) setZoneId(t.zoneId);
+                              }}
+                              className="absolute flex flex-col items-center transition-transform active:scale-110"
+                              style={{
+                                left: `${t.x}%`,
+                                top: `${t.y}%`,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: isSelected ? 20 : 10,
+                              }}
+                            >
+                              <div
+                                className="flex items-center justify-center rounded-full text-[10px] font-bold text-white transition-all duration-150"
+                                style={{
+                                  width: isSelected ? 34 : 28,
+                                  height: isSelected ? 34 : 28,
+                                  background: isSelected
+                                    ? "var(--primary)"
+                                    : "rgba(30,32,38,0.85)",
+                                  border: `2.5px solid ${isSelected ? "var(--primary)" : "rgba(255,255,255,0.5)"}`,
+                                  boxShadow: isSelected
+                                    ? "0 0 0 4px color-mix(in_srgb,var(--primary)_35%,transparent),0 4px 12px rgba(0,0,0,0.4)"
+                                    : "0 2px 8px rgba(0,0,0,0.4)",
+                                }}
+                              >
+                                {t.label.replace(/^T/, "")}
+                              </div>
+                              {isSelected && (
+                                <div
+                                  className="mt-1 rounded-full px-2 py-0.5 text-[9px] font-bold text-white whitespace-nowrap"
+                                  style={{ background: "var(--primary)" }}
+                                >
+                                  {t.label} · {t.capacity}p
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {tableId && (
+                        <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
+                          <Check size={13} className="[color:var(--primary)]" />
+                          <span>
+                            {availableTables.find((t) => t.id === tableId)?.label} selected ·{" "}
+                            {availableTables.find((t) => t.id === tableId)?.capacity} guests
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTableId(null)}
+                            className="ml-auto text-zinc-600 hover:text-zinc-400 text-[11px]"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : zones.length > 0 ? (
                     <div>
                       <SectionLabel icon={Armchair}>Where would you like to sit?</SectionLabel>
                       <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1 py-1 snap-x">
@@ -595,7 +697,7 @@ export function DineinClient({
                         })}
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
                   <TextureButton variant="brand" size="lg" onClick={submitComposer} disabled={!canSubmit || busy}>
                     {canSubmit ? `Find my table — ${summary}` : "Pick a time to continue"}
