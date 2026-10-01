@@ -13,9 +13,13 @@
  * showPoweredBy) delivered on /config — no Retilo chrome unless enabled.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FloorPlanPicker = dynamic(() => import("./floor-plan-picker"), { ssr: false }) as React.ComponentType<any>;
 import {
   MapPin,
   Send,
@@ -64,9 +68,22 @@ interface TableInfo {
   isAvailable: boolean;
 }
 
+interface CanvasZone {
+  id: string; x: number; y: number; w: number; h: number; color: string; name: string;
+}
+interface CanvasTable {
+  id: string; x: number; y: number; shape: string; r?: number; w?: number; h?: number;
+  label: string; capacity: number; available: boolean;
+}
+interface CanvasData {
+  zones: CanvasZone[];
+  tables: CanvasTable[];
+}
+
 interface FloorPlan {
   floorPlanUrl: string | null;
   tables: TableInfo[];
+  canvas?: CanvasData | null;
 }
 
 interface DineinConfig {
@@ -192,7 +209,10 @@ export function DineinClient({
   const brand = config.brand;
   const zones = config.zones ?? [];
   const floorPlan = config.floorPlan ?? null;
-  const availableTables = (floorPlan?.tables ?? []).filter((t) => t.isAvailable);
+  const canvasData = floorPlan?.canvas ?? null;
+  const availableTables = (canvasData?.tables ?? floorPlan?.tables ?? []).filter((t) =>
+    "available" in t ? t.available : (t as TableInfo).isAvailable
+  );
   const showPoweredBy = brand ? brand.showPoweredBy : true;
   const days = useMemo(() => nextDays(7), []);
   const searchParams = useSearchParams();
@@ -243,7 +263,7 @@ export function DineinClient({
   const [dateIdx, setDateIdx] = useState<number | null>(0);
   const [time, setTime] = useState<string | null>(null);
   const [zoneId, setZoneId] = useState<number | null>(null);
-  const [tableId, setTableId] = useState<number | null>(null);
+  const [tableId, setTableId] = useState<string | null>(null);
   const [view, setView] = useState<"compose" | "chat">("compose");
 
   // ── conversation state ─────────────────────────────────────────────────────
@@ -325,7 +345,7 @@ export function DineinClient({
     if (!canSubmit || busy) return;
     const day = days[dateIdx!];
     const zone = zones.find((z) => z.id === zoneId);
-    const table = availableTables.find((t) => t.id === tableId);
+    const table = (availableTables as Array<{id: string|number; label: string; capacity: number}>).find((t) => String(t.id) === String(tableId));
     const locationPart = table
       ? ` I want ${table.label} (seats ${table.capacity}).`
       : zone
@@ -339,7 +359,7 @@ export function DineinClient({
   const summary = useMemo(() => {
     if (dateIdx === null) return "";
     const zone = zones.find((z) => z.id === zoneId);
-    const table = availableTables.find((t) => t.id === tableId);
+    const table = (availableTables as Array<{id: string|number; label: string; capacity: number}>).find((t) => String(t.id) === String(tableId));
     return [
       `${guests} guest${guests === 1 ? "" : "s"}`,
       days[dateIdx].chip,
@@ -578,73 +598,22 @@ export function DineinClient({
                     </div>
                   </div>
 
-                  {/* seat picker — floor plan (table-level) or zone cards */}
-                  {floorPlan?.floorPlanUrl && availableTables.length > 0 ? (
+                  {/* seat picker — Konva floor plan (canvas) or zone cards */}
+                  {canvasData && canvasData.tables.length > 0 ? (
                     <div>
                       <SectionLabel icon={Armchair}>Pick your exact table</SectionLabel>
-                      <div
-                        className="relative w-full rounded-2xl overflow-hidden"
-                        style={{ aspectRatio: "16/9" }}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={floorPlan.floorPlanUrl}
-                          alt="Restaurant floor plan"
-                          className="w-full h-full object-cover"
-                        />
-                        {availableTables.map((t) => {
-                          const isSelected = tableId === t.id;
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => {
-                                setTableId(isSelected ? null : t.id);
-                                // also set zone if table has one
-                                if (!isSelected && t.zoneId) setZoneId(t.zoneId);
-                              }}
-                              className="absolute flex flex-col items-center transition-transform active:scale-110"
-                              style={{
-                                left: `${t.x}%`,
-                                top: `${t.y}%`,
-                                transform: "translate(-50%, -50%)",
-                                zIndex: isSelected ? 20 : 10,
-                              }}
-                            >
-                              <div
-                                className="flex items-center justify-center rounded-full text-[10px] font-bold text-white transition-all duration-150"
-                                style={{
-                                  width: isSelected ? 34 : 28,
-                                  height: isSelected ? 34 : 28,
-                                  background: isSelected
-                                    ? "var(--primary)"
-                                    : "rgba(30,32,38,0.85)",
-                                  border: `2.5px solid ${isSelected ? "var(--primary)" : "rgba(255,255,255,0.5)"}`,
-                                  boxShadow: isSelected
-                                    ? "0 0 0 4px color-mix(in_srgb,var(--primary)_35%,transparent),0 4px 12px rgba(0,0,0,0.4)"
-                                    : "0 2px 8px rgba(0,0,0,0.4)",
-                                }}
-                              >
-                                {t.label.replace(/^T/, "")}
-                              </div>
-                              {isSelected && (
-                                <div
-                                  className="mt-1 rounded-full px-2 py-0.5 text-[9px] font-bold text-white whitespace-nowrap"
-                                  style={{ background: "var(--primary)" }}
-                                >
-                                  {t.label} · {t.capacity}p
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <FloorPlanPicker
+                        canvas={canvasData}
+                        selectedTableId={tableId}
+                        onSelect={(id: string | null) => setTableId(id)}
+                        primaryColor={brand?.primaryColor ?? "#a855f7"}
+                      />
                       {tableId && (
                         <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
                           <Check size={13} className="[color:var(--primary)]" />
                           <span>
-                            {availableTables.find((t) => t.id === tableId)?.label} selected ·{" "}
-                            {availableTables.find((t) => t.id === tableId)?.capacity} guests
+                            {(availableTables as CanvasTable[]).find((t) => t.id === tableId)?.label} selected ·{" "}
+                            {(availableTables as CanvasTable[]).find((t) => t.id === tableId)?.capacity} guests
                           </span>
                           <button
                             type="button"
