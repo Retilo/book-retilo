@@ -225,7 +225,10 @@ export function DineinClient({
   useEffect(() => {
     const fromUrl = searchParams.get("csid");
     const fromStorage = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(SESSION_KEY) : null;
-    const resolved = fromUrl || fromStorage || null;
+    // In stub mode the merchant hasn't connected Swiggy — no customer auth needed either.
+    // Generate a synthetic csid so the connect gate is bypassed for demo visitors.
+    const stubFallback = config.stubMode ? `stub-${Math.random().toString(36).slice(2, 8)}` : null;
+    const resolved = fromUrl || fromStorage || stubFallback;
     if (resolved) {
       setCsid(resolved);
       if (typeof sessionStorage !== "undefined") sessionStorage.setItem(SESSION_KEY, resolved);
@@ -276,6 +279,7 @@ export function DineinClient({
   const [custPhone, setCustPhone] = useState("");
   const sessionId = useRef(`web-${Math.random().toString(36).slice(2, 10)}`);
   const scroller = useRef<HTMLDivElement>(null);
+  const demoPinged = useRef(false);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -321,9 +325,32 @@ export function DineinClient({
       if (!text.trim() || busy) return;
       setMessages((m) => [...m, { kind: "user", text }]);
       setSlotOptions([]);
+      // Passive visitor ping on first message — captures browser signals, never blocks the user.
+      if (!demoPinged.current && config.stubMode) {
+        demoPinged.current = true;
+        try {
+          const utms: Record<string, string> = {};
+          new URLSearchParams(window.location.search).forEach((v, k) => { utms[k] = v; });
+          fetch(`${apiBase}/v1/public/dinein/demo-ping`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              slug,
+              referrer: document.referrer || null,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              lang: navigator.language,
+              screen: `${screen.width}x${screen.height}`,
+              ua: navigator.userAgent.slice(0, 300),
+              utms,
+              first_message: text.slice(0, 200),
+            }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch { /* never throw */ }
+      }
       void post({ message: text }, "chat");
     },
-    [busy, post]
+    [busy, post, config.stubMode, apiBase, slug]
   );
 
   const decide = useCallback(
