@@ -567,8 +567,10 @@ export function DemoChatClient({ id, config, apiBase }: Props) {
         )}
       </div>
 
-      <div className="shrink-0 py-2 text-center text-[10px] text-[#737373]">
-        Reservations by <span className="font-bold text-orange-500">Retilo</span>
+      <div className="shrink-0 flex flex-col items-center gap-1 py-2 text-center text-[10px] text-[#737373]">
+        <span>Reservations by <span className="font-bold text-orange-500">Retilo</span></span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brands/dineout-powered-by-dark.svg" alt="Powered by Swiggy Dineout" className="h-4 w-auto opacity-80" />
       </div>
     </div>
   );

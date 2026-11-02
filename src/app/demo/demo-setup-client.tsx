@@ -164,7 +164,9 @@ export function DemoSetupClient({ apiBase }: Props) {
 
         {/* Swiggy restaurant search */}
         <div className="mb-6">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-[#737373]">
+          <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#737373]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brands/swiggy-logo-square.svg" alt="Swiggy" className="h-4 w-4 rounded" />
             Find your restaurant on Swiggy <span className="normal-case text-[10px] font-normal">(optional)</span>
           </label>
           <div className="flex gap-2">
@@ -247,6 +249,10 @@ export function DemoSetupClient({ apiBase }: Props) {
         <p className="mt-4 text-center text-[11px] text-[#737373]">
           Powered by <span className="text-[#f4f4f5] font-semibold">Retilo</span> · AI for restaurants
         </p>
+        <div className="mt-2.5 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brands/dineout-powered-by-dark.svg" alt="Powered by Swiggy Dineout" className="h-5 w-auto opacity-85" />
+        </div>
       </div>
 
       {/* ── Preview Panel ── */}

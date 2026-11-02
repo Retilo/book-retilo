@@ -447,11 +447,13 @@ export function DineinClient({
             style={{ background: "#fc8019" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brands/swiggy.webp" alt="" className="h-5 w-auto brightness-0 invert" />
+            <img src="/brands/swiggy-logo-square.svg" alt="Swiggy" className="h-6 w-6 rounded-md ring-1 ring-white/35" />
             {connectingSwiggy ? "Redirecting…" : "Continue with Swiggy"}
           </button>
 
           <p className="text-[11px] text-zinc-600">Your Swiggy account is used only to place this booking</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brands/dineout-powered-by-dark.svg" alt="Powered by Swiggy Dineout" className="h-5 w-auto opacity-90" />
         </div>
       </div>
     );
@@ -739,9 +741,8 @@ export function DineinClient({
                           {formatInline(m.text.replace(/\n*Powered by Swiggy\s*$/i, ""))}
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-zinc-800 flex items-center gap-1.5 text-xs text-zinc-400">
-                          Powered by{" "}
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/brands/swiggy.webp" alt="Swiggy" className="h-4 w-auto" />
+                          <img src="/brands/dineout-powered-by-dark.svg" alt="Powered by Swiggy Dineout" className="h-4 w-auto opacity-90" />
                         </div>
                       </div>
                     ) : (
@@ -942,9 +943,8 @@ export function DineinClient({
 
       <footer className="pb-6 text-xs text-zinc-600 flex items-center gap-1.5">
         {showPoweredBy && <>Reservations by Retilo · </>}
-        Powered by{" "}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brands/swiggy.webp" alt="Swiggy" className="h-4 w-auto opacity-90" />
+        <img src="/brands/dineout-powered-by-dark.svg" alt="Powered by Swiggy Dineout" className="h-4 w-auto opacity-90" />
       </footer>
     </div>
   );
